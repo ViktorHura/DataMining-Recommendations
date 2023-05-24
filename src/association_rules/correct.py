@@ -8,7 +8,7 @@ def powerset(iterable):
 
 def join_set(itemsets, k):
     return set(
-        [itemset1.union(itemset2) for itemset1 in itemsets for itemset2 in itemsets if len(itemset1.union(itemset2)) == k]
+        [comb[0].union(comb[1]) for comb in list(combinations(itemsets, k))]
     )
 
 
@@ -44,6 +44,8 @@ def association_rules(transactions, min_support, min_confidence):
         for subset in filterfalse(lambda x: not x, powerset(itemset)):
             antecedent = frozenset(subset)
             consequent = itemset - antecedent
+            if consequent == frozenset():
+                continue
             support_antecedent = len([t for t in transactions if antecedent.issubset(t)]) / len(transactions)
             support_itemset = len([t for t in transactions if itemset.issubset(t)]) / len(transactions)
             confidence = support_itemset / support_antecedent

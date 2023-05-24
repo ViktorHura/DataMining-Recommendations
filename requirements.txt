@@ -1,1 +1,2 @@
 pandas==2.0.1
+efficient-apriori==2.0.3
