@@ -39,26 +39,21 @@ def recommend_items_unranked(input_items, rules):
     return recommendations
 
 
-def recommend_items_original(input_items, rules, top_n):
+def recommend_items_custom_metric(input_items, rules, metric_index, method, top_n):
     recommendations = recommend_items_unranked(input_items, rules)
-    recommendations = {
-        item: (sum(m[3] for m in item_rules) / len(item_rules), sum(m[2] for m in item_rules) / len(item_rules))
-        for item, item_rules in recommendations.items()
-    }
-    sorted_recommendations = sorted(recommendations.items(), key=lambda x: (-x[1][0], -x[1][1]))
-    return [item for item, _ in sorted_recommendations[:top_n]]
-
-
-def recommend_items_custom_metric(input_items, rules, metric_index, average, top_n):
-    recommendations = recommend_items_unranked(input_items, rules)
-    if not average:
+    if method == 'max':
         recommendations = {
             item: max(m[metric_index] for m in item_rules)
             for item, item_rules in recommendations.items()
         }
-    else:
+    elif method == 'avg':
         recommendations = {
             item: sum(m[metric_index] for m in item_rules) / len(item_rules)
+            for item, item_rules in recommendations.items()
+        }
+    elif method == 'wmx':
+        recommendations = {
+            item: max(m[metric_index] for m in item_rules) * (1 - (1/len(item_rules)))
             for item, item_rules in recommendations.items()
         }
     sorted_recommendations = sorted(recommendations.items(), key=lambda x: -x[1])
@@ -76,12 +71,15 @@ def Imbalance_Ratio_metric(rule):
 
 
 def main():
+    min_support = 0.0025
+    min_confidence = 0.6
+
+    print(f'min_support: {min_support}, min_confidence: {min_confidence}')
+
     transactions = pd.read_csv("../../data/retail2-transactions.tsv", sep="\t", index_col=0)
     # yes the eval looks sketchy, it is to convert strings to sets
     transactions = [i for i in transactions['transaction'].apply(eval).tolist()]
 
-    min_support = 0.0025
-    min_confidence = 0.6
     print(f"== Generating association rules with min_support: {min_support} "
           f"(≈{math.floor(min_support*len(transactions))}/{len(transactions)} transaction) and min_confidence: {min_confidence} ==")
     print()
@@ -104,13 +102,6 @@ def main():
         user_inputs[index] = eval(row[0])
         user_true_items[index] = eval(row[1])
 
-
-    # average confidence
-    print(evaluate_recommendations(recommend_items_original, user_true_items, user_inputs, rules, 1))
-    # max confidence
-    print(evaluate_recommendations(functools.partial(recommend_items_custom_metric, metric_index=3, average=False),
-                                   user_true_items, user_inputs, rules, 1))
-
     # metric_index - metric
     # 3 - confidence
     # 4 - lift
@@ -118,13 +109,40 @@ def main():
     # 6 - Rule Power Factor
     # 7 - Jaccard Coefficient
     # 8 - Imbalance Ratio
-    for i in range(3, 9):
-        # max lift
-        print(evaluate_recommendations(functools.partial(recommend_items_custom_metric, metric_index=i, average=True),
-                                       user_true_items, user_inputs, rules, 5))
-        # average lift
-        print(evaluate_recommendations(functools.partial(recommend_items_custom_metric, metric_index=i, average=False),
-                                       user_true_items, user_inputs, rules, 5))
+    metric_names = ['Confidence', 'Lift', 'Conviction', 'Rule Power Factor', 'Jaccard Coefficient', 'Imbalance Ratio']
+
+    top_ks = [1, 3, 5, 7, 10, 15, 20]
+
+    metric_results_dict = {(name + '_avg'): None for name in metric_names}
+    metric_results_dict.update({(name + '_max'): None for name in metric_names})
+
+    def make_results_dic(k):
+        d = metric_results_dict.copy()
+        d.update({'K': k})
+        return d
+
+    data = {
+        'precision': [make_results_dic(k) for k in top_ks],
+        'recall': [make_results_dic(k) for k in top_ks],
+        'F1': [make_results_dic(k) for k in top_ks]
+    }
+
+    for j,k in enumerate(top_ks):
+        for i in range(3, 9):
+            metric_name = metric_names[i - 3]
+            for method in ['avg', 'max', 'wmx']:
+                print(f'Evaluating top_k={k}, metric={metric_name}, method={method}')
+                result = evaluate_recommendations(functools.partial(recommend_items_custom_metric, metric_index=i, method=method),
+                                           user_true_items, user_inputs, rules, k)
+
+                metric_name_method = metric_name + '_' + method
+
+                data['precision'][j][metric_name_method] = result[0]
+                data['recall'][j][metric_name_method] = result[1]
+                data['F1'][j][metric_name_method] = result[2]
+
+    pickle.dump(data, open("data.pickle", "wb"))
+    print()
 
 
 if __name__ == '__main__':
