@@ -51,6 +51,13 @@ def association_rules(transactions, min_support, min_confidence):
     return rules
 
 
+
+
+
+
+
+
+
 def main():
     # Example usage
     transactions = [

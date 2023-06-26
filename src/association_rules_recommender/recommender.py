@@ -91,7 +91,7 @@ def main():
               r.confidence, r.lift, r.conviction, r.rpf,
               Jaccard_metric(r), Imbalance_Ratio_metric(r)) for r in rules]
 
-    pickle.dump(rules, open("rules.pickle", "wb"))
+    pickle.dump(rules, open("cache/rules.pickle", "wb"))
     print(f'Generated {len(rules)} rules \n')
 
     # prepare the test user data into two dictionaries
@@ -127,7 +127,7 @@ def main():
         'F1': [make_results_dic(k) for k in top_ks]
     }
 
-    for j,k in enumerate(top_ks):
+    for j, k in enumerate(top_ks):
         for i in range(3, 9):
             metric_name = metric_names[i - 3]
             for method in ['avg', 'max', 'wmx']:
@@ -141,7 +141,7 @@ def main():
                 data['recall'][j][metric_name_method] = result[1]
                 data['F1'][j][metric_name_method] = result[2]
 
-    pickle.dump(data, open("data.pickle", "wb"))
+    pickle.dump(data, open("cache/data.pickle", "wb"))
     print()
 
 

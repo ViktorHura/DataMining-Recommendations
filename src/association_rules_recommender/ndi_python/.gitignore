@@ -1,0 +1,7 @@
+.idea
+build/Testing
+build/CMakeFiles
+build/*.txt
+build/Makefile
+build/*.cbp
+build/*.cmake

@@ -26,32 +26,38 @@ def apriori(transactions, min_support):
     items = set(chain(*transactions))
     itemsets = [frozenset([item]) for item in items]
     itemsets_by_length = [set()]
+    itemsets_supports = dict()
     k = 1
     while itemsets:
         support_count = itemsets_support(transactions, itemsets, min_support)
         lk = set(support_count.keys())
         itemsets_by_length.append(lk)
+        itemsets_supports.update(support_count)
         k += 1
         itemsets = join_set(lk, k)
     frequent_itemsets = set(chain(*itemsets_by_length))
-    return frequent_itemsets
+    return frequent_itemsets, itemsets_supports
 
 
 def association_rules(transactions, min_support, min_confidence):
-    frequent_itemsets = apriori(transactions, min_support)
+    frequent_itemsets, itemsets_supports = apriori(transactions, min_support)
     rules = []
     for itemset in frequent_itemsets:
+        support_itemset = itemsets_supports[itemset]
         for subset in filterfalse(lambda x: not x, powerset(itemset)):
             antecedent = frozenset(subset)
             consequent = itemset - antecedent
             if consequent == frozenset():
                 continue
             support_antecedent = len([t for t in transactions if antecedent.issubset(t)]) / len(transactions)
-            support_itemset = len([t for t in transactions if itemset.issubset(t)]) / len(transactions)
             confidence = support_itemset / support_antecedent
             if confidence >= min_confidence:
                 rules.append((antecedent, consequent, support_itemset, confidence))
     return rules
+
+
+
+
 
 
 def main():

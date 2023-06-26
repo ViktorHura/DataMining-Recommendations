@@ -1,6 +1,22 @@
 import pandas as pd
 import random, math
 
+id_dict = {}
+next_id = 1
+
+
+def stringID_to_int(id):
+    global id_dict
+    global next_id
+
+    if id in id_dict:
+        return str(id_dict[id])
+
+    id_dict[id] = next_id
+    next_id += 1
+
+    return str(next_id - 1)
+
 
 def create_transactions_and_users():
     data = pd.read_csv('UCI-retail2.csv')
@@ -12,6 +28,7 @@ def create_transactions_and_users():
     grouped = data.groupby(['Invoice'])
     for name, group in grouped:
         items = group['StockCode'].to_list()
+        items = [stringID_to_int(i) for i in items]
         if len(items) > 10:
             if random.random() < 0.2:
                 items_user = set(random.sample(items, math.floor(len(items) * 0.7)))
